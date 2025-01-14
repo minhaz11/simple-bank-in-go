@@ -15,39 +15,15 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func WriteJson(w http.ResponseWriter, statusCode int, data any) error {
-	w.WriteHeader(statusCode)
-	w.Header().Set("Content-Type", "application/json")
-
-	return json.NewEncoder(w).Encode(data)
-}
-
-type ErrorResponse struct {
-	Error   bool   `json:"error"`
-	Message string `json:"message"`
-}
-
-type apiProcessFunc func(http.ResponseWriter, *http.Request) error
-
-func makeHandlerFunc(f apiProcessFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		err := f(w, r)
-		if err != nil {
-			WriteJson(w, http.StatusBadRequest, ErrorResponse{
-				Error:   true,
-				Message: err.Error(),
-			})
-		}
-	}
-}
-
 type ApiServer struct {
 	listenAddr string
+	storage Storage
 }
 
-func NewApiServer(listenAddr string) *ApiServer {
+func NewApiServer(listenAddr string, storage Storage) *ApiServer {
 	return &ApiServer{
 		listenAddr: listenAddr,
+		storage: storage,
 	}
 }
 
@@ -66,7 +42,7 @@ func (server *ApiServer) Run() {
 
 	done := make(chan os.Signal, 1)
 
-	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGALRM)
+	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
 		if err := srvr.ListenAndServe(); err != nil {
@@ -122,4 +98,32 @@ func (server *ApiServer) handleDeleteAccount(w http.ResponseWriter, r *http.Requ
 
 func (server *ApiServer) handleTransferMoney(w http.ResponseWriter, r *http.Request) error {
 	return nil
+}
+
+
+
+func WriteJson(w http.ResponseWriter, statusCode int, data any) error {
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+
+	return json.NewEncoder(w).Encode(data)
+}
+
+type ErrorResponse struct {
+	Error   bool   `json:"error"`
+	Message string `json:"message"`
+}
+
+type apiProcessFunc func(http.ResponseWriter, *http.Request) error
+
+func makeHandlerFunc(f apiProcessFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		err := f(w, r)
+		if err != nil {
+			WriteJson(w, http.StatusBadRequest, ErrorResponse{
+				Error:   true,
+				Message: err.Error(),
+			})
+		}
+	}
 }
