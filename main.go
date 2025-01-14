@@ -10,6 +10,11 @@ func main() {
 		return
 	}
 
+	if err = dbStore.Seeder(); err != nil {
+		log.Fatal(err)
+		return
+	}
+
 	server := NewApiServer(":8085", dbStore)
 
 	server.Run()
